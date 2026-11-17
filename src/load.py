@@ -25,16 +25,28 @@ def load_table(df, table_name):
     print(f"Loaded {len(df)} rows into staging.{table_name}")
 
 
-TABLES = ["book_purchases", "reading", "prices", "trends"]
+TABLES = ["book_purchases", "reading", "trends"]
 
 
 def load_all():
     """Load every clean CSV into its own staging table."""
     for name in TABLES:
         # Parse the date columns so Postgres stores real dates, not text
-        dates = ["date"] if name in ("prices", "trends") else None
+        dates = ["date"] if name == "trends" else None
         df = pd.read_csv(f"data/clean/{name}.csv", parse_dates=dates)
         load_table(df, name)
+
+    # The country list is written by hand, so it lives in seeds/, not data/clean/
+    load_table(pd.read_csv("seeds/countries.csv"), "countries")
+
+
+def run_sql_file(path):
+    """Run every SQL statement in a file."""
+    with open(path) as f:
+        sql = f.read()
+    with get_engine().begin() as conn:
+        conn.execute(text(sql))
+    print(f"Ran {path}")
 
 
 if __name__ == "__main__":

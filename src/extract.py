@@ -17,12 +17,6 @@ BOOK_INDICATORS = [
 DATASETS = {
     "isoc_ec_ibgs": {"indic_is": BOOK_INDICATORS},        # online book purchases
     "ilc_scp27": None,                                     # books read (survey)
-    "prc_hicp_midx": {                                     # prices
-        # books, stationery, all items (CP0953 is "misc. printed matter", not stationery)
-        # This series uses the old COICOP codes and stops at 2025-12 (see notes.md).
-        "coicop": ["CP0951", "CP0954", "CP00"],
-        "unit": "I15",                                     # index where 2015 = 100
-    },
 }
 
 

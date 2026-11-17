@@ -37,12 +37,6 @@ Values = % of people who bought this online in the last 3 months.
 - Kept all `sex` and `age` groups, education = `TOTAL`. Headline: `sex = 'T'`, `age = 'Y_GE16'`.
 - **Germany has no values** (listed by Eurostat but empty), so 26 of the EU27 countries.
 
-### `prc_hicp_midx`: monthly consumer price index (2015 = 100)
-- `CP0951` = books, `CP0954` = stationery and drawing materials, `CP00` = all items.
-- Not `CP0953`: that is "miscellaneous printed matter", not stationery.
-- Periods come as `2025-10` (not `2025M10`).
-- **Series stops at 2025-12.** In 2026 Eurostat moved the HICP to new product codes (COICOP 2018), so newer months live in a different dataset with different codes.
-
 ### Google Trends (`data/raw/trends/`)
-- 5 keywords × 10 countries, weekly, last 5 years. Values = 0–100, relative **within each country**, so don't compare raw levels across countries.
+- 2 reading keywords (Kindle, e-reader) × 10 countries, weekly, last 5 years. Values = 0–100, relative **within each country**, so don't compare raw levels across countries.
 - Google often returns 429 (too many requests). `extract_trends.py` skips countries already downloaded and stops politely on a 429, so just run it again later.

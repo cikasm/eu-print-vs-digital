@@ -3,7 +3,7 @@ import time
 from pytrends.exceptions import TooManyRequestsError
 from pytrends.request import TrendReq
 
-KEYWORDS = ["Kindle", "e-reader", "notebook", "bullet journal", "planner"]   # max 5 per request
+KEYWORDS = ["Kindle", "e-reader"]   # reading keywords (max 5 per request)
 COUNTRIES = ["DE", "FR", "IT", "ES", "PL", "NL", "SE", "DK", "RO", "EE"]
 FOLDER = "data/raw/trends"
 

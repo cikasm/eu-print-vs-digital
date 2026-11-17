@@ -97,37 +97,10 @@ def clean_reading(df, labels):
     return df[["country_code", "year", "sex", "age", "books_read", "books_read_label", "value", "flag"]]
 
 
-def clean_prices(df, labels):
-    """Monthly price index for books, stationery and all items (2015 = 100)."""
-    # 1. Keep only real countries
-    df = df[df["geo"].isin(EU27)]
-
-    # 2. One unit only (we downloaded just I15, but be safe)
-    df = df[df["unit"] == "I15"]
-
-    # 3. Give columns clear names
-    df = df.rename(columns={"geo": "country_code", "coicop": "product_code", "value": "price_index"})
-
-    # 4. Add the readable product name
-    df["product"] = df["product_code"].map(labels)
-
-    # 5. Turn periods like "2025-10" into real dates (the 1st of the month)
-    df["date"] = pd.to_datetime(df["time"] + "-01")
-
-    # 6. Drop empty values and duplicates
-    df = df.dropna(subset=["price_index"]).drop_duplicates()
-
-    # 7. Keep only the columns we need
-    return df[["country_code", "date", "product_code", "product", "price_index", "flag"]]
-
-
-# Which keywords are print or digital, reading or writing
-KEYWORD_INFO = {
-    "Kindle":         ("digital", "reading"),
-    "e-reader":       ("digital", "reading"),
-    "notebook":       ("print", "writing"),
-    "bullet journal": ("print", "writing"),
-    "planner":        ("print", "writing"),
+# Which keywords are print or digital
+KEYWORD_FORMAT = {
+    "Kindle":   "digital",
+    "e-reader": "digital",
 }
 
 
@@ -146,9 +119,8 @@ def clean_trends(folder="data/raw/trends"):
 
     df = pd.concat(tables, ignore_index=True)
     df["date"] = pd.to_datetime(df["date"])
-    df["format"] = df["keyword"].map(lambda k: KEYWORD_INFO[k][0])
-    df["medium"] = df["keyword"].map(lambda k: KEYWORD_INFO[k][1])
-    return df[["date", "country_code", "keyword", "format", "medium", "interest"]]
+    df["format"] = df["keyword"].map(KEYWORD_FORMAT)
+    return df[["date", "country_code", "keyword", "format", "interest"]]
 
 
 def read_raw(dataset_code):
@@ -166,8 +138,6 @@ def run_all_transforms():
     }
     data = read_raw("ilc_scp27")
     tables["reading"] = clean_reading(jsonstat_to_df(data), get_labels(data, "n_book"))
-    data = read_raw("prc_hicp_midx")
-    tables["prices"] = clean_prices(jsonstat_to_df(data), get_labels(data, "coicop"))
     tables["trends"] = clean_trends()
 
     for name, df in tables.items():
