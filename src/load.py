@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
@@ -24,7 +25,17 @@ def load_table(df, table_name):
     print(f"Loaded {len(df)} rows into staging.{table_name}")
 
 
+TABLES = ["book_purchases", "reading", "prices", "trends"]
+
+
+def load_all():
+    """Load every clean CSV into its own staging table."""
+    for name in TABLES:
+        # Parse the date columns so Postgres stores real dates, not text
+        dates = ["date"] if name in ("prices", "trends") else None
+        df = pd.read_csv(f"data/clean/{name}.csv", parse_dates=dates)
+        load_table(df, name)
+
+
 if __name__ == "__main__":
-    import pandas as pd
-    df = pd.read_csv("data/clean/book_purchases.csv")
-    load_table(df, "book_purchases")
+    load_all()

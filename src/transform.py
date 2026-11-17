@@ -1,4 +1,5 @@
 import json
+import os
 import pandas as pd
 
 
@@ -72,13 +73,108 @@ def clean_purchases(df, labels):
     return df[["country_code", "year", "indicator", "indicator_label", "value", "flag"]]
 
 
+def clean_reading(df, labels):
+    """Books read in the last 12 months (survey, 2022 only)."""
+    # 1. Keep only real countries
+    df = df[df["geo"].isin(EU27)]
+
+    # 2. Keep one unit (%) and all education levels together
+    df = df[(df["unit"] == "PC") & (df["isced11"] == "TOTAL")]
+
+    # 3. Give columns clear names
+    df = df.rename(columns={"geo": "country_code", "time": "year", "n_book": "books_read"})
+
+    # 4. Add the readable label for the number of books
+    df["books_read_label"] = df["books_read"].map(labels)
+
+    # 5. Fix data types
+    df["year"] = df["year"].astype(int)
+
+    # 6. Drop empty values and duplicates
+    df = df.dropna(subset=["value"]).drop_duplicates()
+
+    # 7. Keep only the columns we need (value = % of people in that group)
+    return df[["country_code", "year", "sex", "age", "books_read", "books_read_label", "value", "flag"]]
+
+
+def clean_prices(df, labels):
+    """Monthly price index for books, stationery and all items (2015 = 100)."""
+    # 1. Keep only real countries
+    df = df[df["geo"].isin(EU27)]
+
+    # 2. One unit only (we downloaded just I15, but be safe)
+    df = df[df["unit"] == "I15"]
+
+    # 3. Give columns clear names
+    df = df.rename(columns={"geo": "country_code", "coicop": "product_code", "value": "price_index"})
+
+    # 4. Add the readable product name
+    df["product"] = df["product_code"].map(labels)
+
+    # 5. Turn periods like "2025-10" into real dates (the 1st of the month)
+    df["date"] = pd.to_datetime(df["time"] + "-01")
+
+    # 6. Drop empty values and duplicates
+    df = df.dropna(subset=["price_index"]).drop_duplicates()
+
+    # 7. Keep only the columns we need
+    return df[["country_code", "date", "product_code", "product", "price_index", "flag"]]
+
+
+# Which keywords are print or digital, reading or writing
+KEYWORD_INFO = {
+    "Kindle":         ("digital", "reading"),
+    "e-reader":       ("digital", "reading"),
+    "notebook":       ("print", "writing"),
+    "bullet journal": ("print", "writing"),
+    "planner":        ("print", "writing"),
+}
+
+
+def clean_trends(folder="data/raw/trends"):
+    """Combine one Google Trends CSV per country into one long table."""
+    tables = []
+    for file in sorted(os.listdir(folder)):
+        if not file.endswith(".csv"):
+            continue
+        df = pd.read_csv(os.path.join(folder, file))
+        df["country_code"] = file.replace(".csv", "")
+        df = df.drop(columns=["isPartial"], errors="ignore")
+        # Wide (one column per keyword) -> long (one row per keyword)
+        df = df.melt(id_vars=["date", "country_code"], var_name="keyword", value_name="interest")
+        tables.append(df)
+
+    df = pd.concat(tables, ignore_index=True)
+    df["date"] = pd.to_datetime(df["date"])
+    df["format"] = df["keyword"].map(lambda k: KEYWORD_INFO[k][0])
+    df["medium"] = df["keyword"].map(lambda k: KEYWORD_INFO[k][1])
+    return df[["date", "country_code", "keyword", "format", "medium", "interest"]]
+
+
+def read_raw(dataset_code):
+    with open(f"data/raw/{dataset_code}.json") as f:
+        return json.load(f)
+
+
+def run_all_transforms():
+    """Clean every raw file and save it into data/clean/."""
+    os.makedirs("data/clean", exist_ok=True)
+
+    data = read_raw("isoc_ec_ibgs")
+    tables = {
+        "book_purchases": clean_purchases(jsonstat_to_df(data), get_labels(data, "indic_is")),
+    }
+    data = read_raw("ilc_scp27")
+    tables["reading"] = clean_reading(jsonstat_to_df(data), get_labels(data, "n_book"))
+    data = read_raw("prc_hicp_midx")
+    tables["prices"] = clean_prices(jsonstat_to_df(data), get_labels(data, "coicop"))
+    tables["trends"] = clean_trends()
+
+    for name, df in tables.items():
+        df.to_csv(f"data/clean/{name}.csv", index=False)
+        print(f"Saved data/clean/{name}.csv ({len(df)} rows)")
+
+
 # This part only runs when you run this file directly
 if __name__ == "__main__":
-    with open("data/raw/book_purchases_all.json") as f:
-        data = json.load(f)
-
-    raw = jsonstat_to_df(data)
-    clean = clean_purchases(raw, get_labels(data, "indic_is"))
-    clean.to_csv("data/clean/book_purchases.csv", index=False)
-    print(clean.head())
-    print("Clean rows:", len(clean))
+    run_all_transforms()
